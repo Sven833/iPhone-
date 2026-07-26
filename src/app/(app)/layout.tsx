@@ -35,6 +35,18 @@ export default async function AppLayout({
               >
                 Angebote
               </Link>
+              <Link
+                href="/signale"
+                className="text-slate-600 hover:text-orange-600"
+              >
+                Signale
+              </Link>
+              <Link
+                href="/trades"
+                className="text-slate-600 hover:text-orange-600"
+              >
+                Trades
+              </Link>
             </nav>
           </div>
 

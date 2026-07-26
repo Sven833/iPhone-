@@ -52,3 +52,37 @@ model AngebotPosition {
   angebot      Angebot @relation(fields: [angebotId], references: [id], onDelete: Cascade)
   angebotId    Int
 }
+
+model Signal {
+  id         String   @id @default(cuid())
+  symbol     String
+  richtung   String
+  preis      Float?
+  quelle     String?
+  rohdaten   String?
+  status     String   @default("offen")
+  createdAt  DateTime @default(now())
+  trades     Trade[]
+}
+
+model Trade {
+  id             String    @id @default(cuid())
+  symbol         String
+  richtung       String
+  menge          Float
+  einstiegspreis Float
+  ausstiegspreis Float?
+  status         String    @default("offen")
+  signal         Signal?   @relation(fields: [signalId], references: [id])
+  signalId       String?
+  createdAt      DateTime  @default(now())
+  geschlossenAt  DateTime?
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+}
