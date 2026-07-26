@@ -29,6 +29,12 @@ export default async function AppLayout({
               >
                 Kunden
               </Link>
+              <Link
+                href="/angebote"
+                className="text-slate-600 hover:text-orange-600"
+              >
+                Angebote
+              </Link>
             </nav>
           </div>
 

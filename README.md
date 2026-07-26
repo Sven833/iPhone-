@@ -1,6 +1,6 @@
 # MSB Malerbetrieb – Firmen-Tool
 
-Internes Web-Tool für den Malerbetrieb: Login-geschützter Bereich mit Kundenverwaltung als Startpunkt. Weitere Module (Angebote/Aufmaß, Zeiterfassung, ...) können darauf aufgebaut werden.
+Internes Web-Tool für den Malerbetrieb: Login-geschützter Bereich mit Kundenverwaltung und Angebotserstellung. Weitere Module (Aufmaß, Zeiterfassung, ...) können darauf aufgebaut werden.
 
 ## Tech-Stack
 
@@ -65,13 +65,14 @@ src/
     (app)/             Geschützter Bereich (Login erforderlich)
       dashboard/       Übersicht
       kunden/          Kundenverwaltung (Liste, Neuanlage, Bearbeiten)
+      angebote/        Angebote mit Positionen und Status (Entwurf/Versendet/Angenommen/Abgelehnt)
   components/          Wiederverwendbare UI-Komponenten
   lib/prisma.ts        Prisma-Client-Singleton
   auth.ts               NextAuth-Konfiguration (Provider, Callbacks)
   auth.config.ts        Edge-taugliche Basis-Konfiguration (Routenschutz)
   proxy.ts              Middleware/Proxy: erzwingt Login auf geschützten Routen
 prisma/
-  schema.prisma          Datenmodell (User, Kunde)
+  schema.prisma          Datenmodell (User, Kunde, Angebot, AngebotPosition)
   seed.ts                 Anlegen des Admin-Benutzers
 ```
 
@@ -79,7 +80,8 @@ prisma/
 
 Mögliche Ausbaustufen für den Malerbetrieb:
 
-- Angebote & Aufmaß erfassen
+- Aufmaß direkt am Kunden erfassen
+- Angebote als PDF exportieren/versenden
 - Zeiterfassung pro Baustelle/Projekt
 - Rollen/Rechte für mehrere Mitarbeiter
 - Umzug von SQLite auf eine Server-Datenbank (z.B. PostgreSQL) für den Produktivbetrieb mit mehreren Nutzern

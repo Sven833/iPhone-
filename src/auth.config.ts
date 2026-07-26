@@ -9,7 +9,8 @@ export const authConfig = {
       const isLoggedIn = !!auth?.user;
       const isProtectedRoute =
         nextUrl.pathname.startsWith("/dashboard") ||
-        nextUrl.pathname.startsWith("/kunden");
+        nextUrl.pathname.startsWith("/kunden") ||
+        nextUrl.pathname.startsWith("/angebote");
 
       if (isProtectedRoute) {
         return isLoggedIn;

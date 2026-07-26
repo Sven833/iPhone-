@@ -19,12 +19,36 @@ model User {
 }
 
 model Kunde {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   name      String
   telefon   String?
   email     String?
   adresse   String?
   notizen   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  angebote  Angebot[]
+}
+
+model Angebot {
+  id         Int               @id @default(autoincrement())
+  titel      String
+  status     String            @default("entwurf")
+  notizen    String?
+  kunde      Kunde             @relation(fields: [kundeId], references: [id])
+  kundeId    String
+  positionen AngebotPosition[]
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+}
+
+model AngebotPosition {
+  id           String  @id @default(cuid())
+  beschreibung String
+  menge        Float
+  einheit      String
+  einzelpreis  Float
+  reihenfolge  Int
+  angebot      Angebot @relation(fields: [angebotId], references: [id], onDelete: Cascade)
+  angebotId    Int
 }
