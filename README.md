@@ -48,6 +48,14 @@ Internes, login-geschütztes Web-Tool mit zwei unabhängigen Bereichen:
 
    Die App läuft dann unter [http://localhost:3000](http://localhost:3000) und leitet automatisch zum Login weiter.
 
+## Trading-Strategie
+
+Im Ordner [`trading/`](./trading/) liegt eine konkrete, backtestbare Trendfolge-Breakout-Strategie
+als Pine Script v6 für TradingView, deren Alerts direkt das Webhook-Format dieser App senden:
+
+- [`trading/trendfolge-breakout.pine`](./trading/trendfolge-breakout.pine) – Strategie-Code (EMA-200-Trendfilter, 20-Kerzen-Breakout, ATR-Trailing-Stop, 1 % Risiko pro Trade)
+- [`trading/STRATEGIE.md`](./trading/STRATEGIE.md) – Regeln, Einrichtung, Test-Fahrplan (Backtest → Paper-Trading → klein live) und ehrliches Erwartungsmanagement
+
 ## Trading-Signale einrichten
 
 ⚠️ **Wichtig**: Dieses Modul führt aktuell **keine echten Orders** bei einem Broker aus. Buy/Sell eröffnet nur eine **virtuelle Paper-Trading-Position** in der eigenen Datenbank (Startkapital konfigurierbar über `PAPER_TRADING_STARTKAPITAL`). Die tatsächliche Ausführung bei einem Broker (z.B. über einen MetaTrader-Expert-Advisor) ist bewusst ein separater, späterer Schritt – dafür sollte das Signal-Setup erst einige Wochen im Demo-Betrieb laufen.

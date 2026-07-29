@@ -1,0 +1,117 @@
+//@version=6
+// Trendfolge-Breakout-Strategie (Long-only)
+//
+// Regeln:
+//   - Trendfilter: Kurs muss über der EMA 200 liegen (nur mit dem Trend handeln)
+//   - Einstieg:    Schlusskurs bricht über das höchste Hoch der letzten 20 Kerzen aus
+//   - Ausstieg:    Chandelier-Trailing-Stop (höchstes Hoch der letzten 20 Kerzen minus 3x ATR),
+//                  der Stop wird nur nachgezogen, nie gesenkt
+//   - Risiko:      Positionsgröße so, dass pro Trade max. 1% des Kapitals riskiert wird
+//
+// Alerts senden JSON im Format des Firmen-Tool-Webhooks (/api/webhooks/tradingview):
+//   {"secret":"...","symbol":"...","richtung":"buy|sell","preis":123.45,"quelle":"..."}
+//
+// Empfohlene Timeframes: 1D (Tageschart) oder 4H. Kein Intraday-Scalping.
+strategy("Trendfolge Breakout (Long)", shorttitle="TF-BO",
+     overlay=true,
+     initial_capital=10000,
+     default_qty_type=strategy.fixed, default_qty_value=1,
+     commission_type=strategy.commission.percent, commission_value=0.1,
+     slippage=2,
+     process_orders_on_close=false, calc_on_every_tick=false,
+     max_labels_count=500)
+
+// ---------------------------------------------------------------- Inputs ---
+grpStrat = "Strategie"
+i_emaLen   = input.int(200, "Trendfilter: EMA-Länge", minval=10, maxval=500, group=grpStrat,
+     tooltip="Es wird nur gekauft, wenn der Schlusskurs über dieser EMA liegt.")
+i_breakLen = input.int(20, "Breakout-Länge (Kerzen)", minval=5, maxval=200, group=grpStrat,
+     tooltip="Einstieg, wenn der Schlusskurs über das höchste Hoch der letzten N Kerzen ausbricht.")
+
+grpRisk = "Risiko"
+i_atrLen  = input.int(14, "ATR-Länge", minval=1, maxval=100, group=grpRisk)
+i_atrMult = input.float(3.0, "ATR-Multiplikator (Stop-Abstand)", minval=0.5, maxval=10, step=0.5, group=grpRisk)
+i_riskPct = input.float(1.0, "Risiko pro Trade (% vom Kapital)", minval=0.1, maxval=5, step=0.25, group=grpRisk,
+     tooltip="Bestimmt die Positionsgröße: riskiert wird dieser Prozentsatz des aktuellen Kapitals, gemessen am Stop-Abstand.")
+
+grpTest = "Backtest-Zeitraum"
+i_start = input.time(timestamp("1 Jan 2018 00:00 +0000"), "Start", group=grpTest)
+i_end   = input.time(timestamp("1 Jan 2099 00:00 +0000"), "Ende", group=grpTest)
+
+grpAlert = "Webhook-Alerts (Firmen-Tool)"
+i_alertsOn = input.bool(true, "Alerts senden", group=grpAlert)
+i_secret   = input.string("", "Webhook-Secret", group=grpAlert,
+     tooltip="Muss dem TRADINGVIEW_WEBHOOK_SECRET aus der .env der App entsprechen.")
+i_quelle   = input.string("Trendfolge Breakout v1", "Quelle (Anzeige in der App)", group=grpAlert)
+
+// ---------------------------------------------------------- Berechnungen ---
+emaTrend    = ta.ema(close, i_emaLen)
+atrVal      = ta.atr(i_atrLen)
+breakLevel  = ta.highest(high, i_breakLen)[1]              // höchstes Hoch der letzten N Kerzen (ohne aktuelle)
+chandelier  = ta.highest(high, i_breakLen) - atrVal * i_atrMult
+
+inDateRange = time >= i_start and time <= i_end
+uptrend     = close > emaTrend
+breakout    = not na(breakLevel) and close > breakLevel
+
+// Trailing-Stop: wird nur angehoben, nie gesenkt; zurückgesetzt, wenn flat
+var float trailStop = na
+if strategy.position_size > 0
+    trailStop := na(trailStop) ? chandelier : math.max(trailStop, chandelier)
+else
+    trailStop := na
+
+// ----------------------------------------------------- Positionsgröße -----
+stopDist    = atrVal * i_atrMult
+riskCapital = strategy.equity * i_riskPct / 100.0
+qty         = stopDist > 0 ? riskCapital / (stopDist * syminfo.pointvalue) : 0.0
+
+// ------------------------------------------------------------- Signale ----
+longSignal = inDateRange and uptrend and breakout and strategy.position_size == 0 and barstate.isconfirmed
+exitSignal = strategy.position_size > 0 and not na(trailStop) and close < trailStop and barstate.isconfirmed
+
+buyMsg  = '{"secret":"' + i_secret + '","symbol":"' + syminfo.ticker +
+     '","richtung":"buy","preis":' + str.tostring(close) +
+     ',"quelle":"' + i_quelle + '"}'
+sellMsg = '{"secret":"' + i_secret + '","symbol":"' + syminfo.ticker +
+     '","richtung":"sell","preis":' + str.tostring(close) +
+     ',"quelle":"' + i_quelle + '"}'
+
+if longSignal and qty > 0
+    strategy.entry("Long", strategy.long, qty=qty)
+    if i_alertsOn
+        alert(buyMsg, alert.freq_once_per_bar_close)
+
+if exitSignal
+    strategy.close("Long", comment="Trail-Stop")
+    if i_alertsOn
+        alert(sellMsg, alert.freq_once_per_bar_close)
+
+// ------------------------------------------------------------- Anzeige ----
+plot(emaTrend, "EMA Trendfilter", color=color.new(color.orange, 0), linewidth=2)
+plot(breakLevel, "Breakout-Level", color=color.new(color.blue, 60))
+plot(strategy.position_size > 0 ? trailStop : na, "Trailing-Stop",
+     color=color.new(color.red, 0), style=plot.style_linebr, linewidth=2)
+
+plotshape(longSignal, "Kaufsignal", style=shape.triangleup, location=location.belowbar,
+     color=color.new(color.green, 0), size=size.small, text="BUY")
+plotshape(exitSignal, "Verkaufssignal", style=shape.triangledown, location=location.abovebar,
+     color=color.new(color.red, 0), size=size.small, text="SELL")
+
+bgcolor(inDateRange ? na : color.new(color.gray, 90))
+
+// Statistik-Tabelle (nur auf der letzten Kerze)
+var table tb = table.new(position.top_right, 2, 5, bgcolor=color.new(color.black, 80), border_width=1)
+if barstate.islast
+    totalTrades = strategy.closedtrades
+    winrate = totalTrades > 0 ? 100.0 * strategy.wintrades / totalTrades : 0.0
+    table.cell(tb, 0, 0, "Netto-P&L", text_color=color.white, text_size=size.small)
+    table.cell(tb, 1, 0, str.tostring(strategy.netprofit, "#.##"), text_color=color.white, text_size=size.small)
+    table.cell(tb, 0, 1, "Trades", text_color=color.white, text_size=size.small)
+    table.cell(tb, 1, 1, str.tostring(totalTrades), text_color=color.white, text_size=size.small)
+    table.cell(tb, 0, 2, "Trefferquote", text_color=color.white, text_size=size.small)
+    table.cell(tb, 1, 2, str.tostring(winrate, "#.#") + " %", text_color=color.white, text_size=size.small)
+    table.cell(tb, 0, 3, "Max. Drawdown", text_color=color.white, text_size=size.small)
+    table.cell(tb, 1, 3, str.tostring(strategy.max_drawdown, "#.##"), text_color=color.white, text_size=size.small)
+    table.cell(tb, 0, 4, "Offene Position", text_color=color.white, text_size=size.small)
+    table.cell(tb, 1, 4, strategy.position_size > 0 ? "Long" : "Flat", text_color=color.white, text_size=size.small)
